@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - materials - shaders [Fresnel]</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#000;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				z-index:1000;
+			}
+
+			a {	color: #ffffff;	}
+
+			#oldie a { color:#0b0 }
+		</style>
+	</head>
+
+	<body>
+
+		
+		<script src="build/three.min.js"></script>
+
+		<script src="js/shaders/FresnelShader.js"></script>
+
+		<script src="js/Detector.js"></script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container;
+
+			var camera, scene, renderer;
+			var cameraCube, sceneCube;
+
+			var mesh, zmesh, lightMesh, geometry;
+			var buildings = [];
+			var snow = [];
+
+			var directionalLight, pointLight;
+
+			var mouseX = 0, mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+			init();
+			animate();
+			
+		//return array with height data from img
+		function getHeightData(img,scale) {
+  
+ 				if (scale == undefined) scale=1;
+  
+				var canvas = document.createElement( 'canvas' );
+				canvas.width = img.width;
+				canvas.height = img.height;
+				var context = canvas.getContext( '2d' );
+ 
+				var size = img.width * img.height;
+				var data = new Float32Array( size );
+ 
+				context.drawImage(img,0,0);
+ 
+				for ( var i = 0; i < size; i ++ ) {
+					data[i] = 0
+				}
+ 
+				var imgd = context.getImageData(0, 0, img.width, img.height);
+				var pix = imgd.data;
+ 
+				var j=0;
+				for (var i = 0; i<pix.length; i +=4) {
+					var all = pix[i]+pix[i+1]+pix[i+2];
+					data[j++] = all/(12*scale);
+				}
+	 
+				return data;
+			}
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
+				camera.position.z = 3200;
+
+				cameraCube = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
+// add a light here to get wood texture to be brighter
+				scene = new THREE.Scene();
+				sceneCube = new THREE.Scene();
+				// terrain
+				var img = new Image();
+				img.onload = function () {
+					var data = getHeightData(img);
+
+			
+				
+				var snowTexture = new THREE.ImageUtils.loadTexture( 'snow.jpg' );
+				var circleGeometry = new THREE.CircleGeometry(600, img.width -1, img.height -1);
+				var meshMaterial = new THREE.MeshBasicMaterial( {map: snowTexture, ambient: 0x030303, color: 0xdddddd, specular: 0x009900, shininess: 30, shading: THREE.FlatShading } );
+        		var circle = new THREE.Mesh(circleGeometry, meshMaterial);
+        		
+
+        		    //set height of vertices
+   				 for ( var i = 0; i<circle.geometry.vertices.length; i++ ) {
+        			 circle.geometry.vertices[i].z = data[i];
+    				}
+            	circle.rotation.x = -90 * Math.PI/180;
+        		circle.position.y = -150;
+ 				circle.overdraw = true;
+ 				circle.doubleSided = true;
+        		scene.add(circle);
+};
+img.src = "Heightmap.png";
+	for ( var i = 0; i < 450; i ++ ) {
+        var sphereGeometry = new THREE.SphereGeometry(10, 20, 20);
+        var snowTexture = new THREE.ImageUtils.loadTexture( 'snow.jpg' );
+        var meshMaterial = new THREE.MeshBasicMaterial({map: snowTexture, ambient: 0x030303, color: 0xdddddd, specular: 0x009900, shininess: 30, shading: THREE.FlatShading});
+        var sphere = new THREE.Mesh(sphereGeometry, meshMaterial);
+        sphere.position.x = Math.random() * 800 - 400;
+		sphere.position.z = Math.random() * 800 - 400;
+		sphere.position.y = Math.random() * 500 - 400;
+        scene.add(sphere);
+        snow.push(sphere);
+        }
+        var geometry2 = new THREE.SphereGeometry( 800, 32, 32);
+        var mesh2 = new THREE.Mesh( geometry2, new THREE.MeshBasicMaterial( {color: 0xFFFFFF, transparent: true, opacity: 0.2} ) );
+         var geometry3 = new THREE.BoxGeometry( 30,30,30);
+         for ( var i = 0; i < 45; i ++ ) {
+          		var buildingTexture = new THREE.ImageUtils.loadTexture( 'AmazingBuilding.jpg' );
+          		var buildingTexture2 = new THREE.ImageUtils.loadTexture( 'Building_texture(1).jpg');
+          		var buildingTexture3 = new THREE.ImageUtils.loadTexture( 'build123.png');
+          		if(i%2 == 0){
+				var mesh3 = new THREE.Mesh( geometry3, new THREE.MeshBasicMaterial( {map: buildingTexture} ) );
+				}
+				else if (i%3 ==0){
+				var mesh3 = new THREE.Mesh( geometry3, new THREE.MeshBasicMaterial( {map: buildingTexture3} ) );
+				}
+				else{
+				var mesh3 = new THREE.Mesh( geometry3, new THREE.MeshBasicMaterial( {map: buildingTexture2} ) );
+				}
+				mesh3.rotate = Math.PI/2;
+				mesh3.scale.x  = (Math.random() * 2 + 1) + (Math.random() * 1 + 0);
+				mesh3.scale.z  = mesh3.scale.x + (Math.random() * 1 + 0);
+				mesh3.scale.y  = (Math.random() * mesh3.scale.x) * 7 + 1;
+				mesh3.position.x = Math.random() * 600 - 300;
+				mesh3.position.z = Math.random() * 600 - 300;
+				mesh3.position.y = -100;
+				scene.add(mesh3);
+				buildings.push(mesh3);
+        }
+        
+        
+        
+        mesh2.position.y = 400;
+        scene.add(mesh2);
+        var floorTexture = new THREE.ImageUtils.loadTexture( 'textures/rustic-wood-grain.jpg' );
+        var cylinder1 = new THREE.Mesh(
+		new THREE.CylinderGeometry( 600, 500, 200, 32 ),new THREE.MeshBasicMaterial( {map: floorTexture, ambient: 0x030303, color: 0xdddd00, specular: 0x009900, shininess: 30, shading: THREE.FlatShading } ));
+		cylinder1.position.y = -250;
+		var cylinder2 = new THREE.Mesh(
+		new THREE.CylinderGeometry( 550, 700, 200, 32 ),new THREE.MeshBasicMaterial( {map: floorTexture, ambient: 0x030303, color: 0xdddd00, specular: 0x009900, shininess: 30, shading: THREE.FlatShading } ));
+		cylinder2.position.y = -400;
+		cylinder1.rotation.y = -90 * Math.PI/180;
+		cylinder2.rotation.y = -90 * Math.PI/180;
+
+	//scene.add( sphere);
+	//scene.add( circle);
+	scene.add( cylinder1);
+	scene.add( cylinder2);
+				var geometry = new THREE.SphereGeometry(800,16,16, Math.PI/2, Math.PI*2, 0, Math.PI);
+
+				var path = "textures/cube/skybox/";
+				var format = '.jpg';
+				var urls = [
+						path + 'px' + format, path + 'nx' + format,
+						path + 'py' + format, path + 'ny' + format,
+						path + 'pz' + format, path + 'nz' + format
+					];
+					var urls2 = [
+						path + 'px' + format, path + 'nx' + format,
+						path + 'ny' + format, path + 'py' + format,
+						path + 'pz' + format, path + 'nz' + format
+					];
+
+
+				var textureCube = THREE.ImageUtils.loadTextureCube( urls );
+				textureCube.format = THREE.RGBFormat;
+				var textureCube2 = THREE.ImageUtils.loadTextureCube( urls2 );
+				textureCube2.format = THREE.RGBFormat;
+				//var textureCube2 = textureCube
+				textureCube2.flipY = true;
+				var shader = THREE.FresnelShader;
+				var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+
+				uniforms[ "tCube" ].value = textureCube2;
+				
+				var parameters = { opacity: 0.2, transparency: true, fragmentShader: shader.fragmentShader, vertexShader: shader.vertexShader, uniforms: uniforms };
+				var material = new THREE.ShaderMaterial( parameters );
+				material.side = THREE.BackSide;
+				//for ( var i = 0; i < 500; i ++ ) {
+
+					var mesh = new THREE.Mesh( geometry, material );
+					//mesh.rotate = Math.PI/2;
+					//mesh.position.x = Math.random() * 10000 - 5000;
+					//mesh.position.y = Math.random() * 10000 - 5000;
+					//mesh.position.z = Math.random() * 10000 - 5000;
+
+					//mesh.scale.x = mesh.scale.y = mesh.scale.z = Math.random() * 3 + 1;
+					mesh.position.y = 400;
+					scene.add( mesh );
+
+
+					//spheres.push( mesh );
+
+			//	}
+
+				scene.matrixAutoUpdate = false;
+
+				// Skybox
+
+				var shader = THREE.ShaderLib[ "cube" ];
+				shader.uniforms[ "tCube" ].value = textureCube;
+
+				var material = new THREE.ShaderMaterial( {
+
+					fragmentShader: shader.fragmentShader,
+					vertexShader: shader.vertexShader,
+					uniforms: shader.uniforms,
+					side: THREE.BackSide
+
+				} ),
+
+				mesh = new THREE.Mesh( new THREE.BoxGeometry( 10000, 10000, 10000 ), material );
+				sceneCube.add( mesh );
+
+				//
+
+				renderer = new THREE.WebGLRenderer( { antialias: false } );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.autoClear = false;
+				container.appendChild( renderer.domElement );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				cameraCube.aspect = window.innerWidth / window.innerHeight;
+				cameraCube.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function onDocumentMouseMove( event ) {
+
+				mouseX = ( event.clientX - windowHalfX ) * 10;
+				mouseY = ( event.clientY - windowHalfY ) * 10;
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+
+			}
+
+			function render() {
+
+				var timer = 0.0001 * Date.now();
+
+				camera.position.x += ( mouseX - camera.position.x ) * .05;
+				camera.position.y += ( - mouseY - camera.position.y ) * .05;
+
+				camera.lookAt( scene.position );
+
+				cameraCube.rotation.copy( camera.rotation );
+
+ 				for ( var i = 0, il = snow.length; i < il; i ++ ) {
+ 					var x = -1 + Math.random() * 2;
+					var y = -1 + Math.random() * 2;
+					var z = -1 + Math.random() * 2;
+
+ 					var sphere = snow[ i ];
+ 					// if loop bounding box?
+ 					//if((Math.random() * 680 - 650) 
+ 					if(i%2 == 0){
+ 					sphere.rotation.x = -580  * Math.sin( timer + i );
+ 					sphere.position.z =-580 * Math.cos( timer + i );
+ 					sphere.position.y = -580 * Math.cos( timer + i + 2.2) + 420;
+ 					
+ 					}
+ 					else if(i%3 == 0){
+ 					sphere.rotation.x = -500  * Math.sin( timer + i );
+ 					sphere.position.z =-500 * Math.cos( timer + i );
+ 					sphere.position.y = -500 * Math.sin( timer + i + 1.1) + 380;
+ 					}
+ 					else if(i%4 == 0){
+ 					sphere.position.x = -520  * Math.cos( timer + i );
+ 					sphere.rotation.z =-520 * Math.sin( timer + i );
+ 					sphere.position.y = -520 * Math.sin( timer + i + 2.2) + 380;
+ 					}
+ 					else{
+ 					sphere.position.x = 630  * Math.cos( timer + i );
+ 					sphere.rotation.z =630 * Math.sin( timer + i );
+ 					sphere.position.y = 630 * Math.sin( timer + i ) + 410;
+ 					
+ 					}
+ 					sphere.rotation.y = (timer + i) * Math.PI/180;
+ 
+ 				}
+ 				//Particle elements needed here
+
+				renderer.clear();
+				renderer.render( sceneCube, cameraCube );
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+
+	</body>
+</html>
